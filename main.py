@@ -1,5 +1,5 @@
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
-from telegram import constants, ReplyKeyboardMarkup, Location, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import constants, ReplyKeyboardMarkup, Location, InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 import os
@@ -12,9 +12,12 @@ from haversine import Unit
 import prettytable as pt
 
 bus_stop_arr = [] # list of json objs representing bus stops
+lta_odata_url = ""
+gmap_url_base = ""
+bscode_to_desc_map = {}
 
 def get_bus_timings(bus_stop_code: str, bus_stop_desc = None) -> list:
-    url = os.getenv("LTA_BUSARR_URL")
+    url = lta_odata_url + "/v3/BusArrival"
 
     lta_acc_key = os.getenv("LTA_ACC_KEY")
     # payload = {}
@@ -26,10 +29,13 @@ def get_bus_timings(bus_stop_code: str, bus_stop_desc = None) -> list:
         'accept': 'application/json'
     }
     response = requests.request("GET", url, headers=headers, params=params)
+    if response.status_code != 200: 
+        print("datamall /v3/BusArrival resp status code: " + str(response.status_code))
+        return
     response_json = response.json()
     service_obj_lst = []
     for service in response_json["Services"]:
-        print(service)
+        # print(service)
         next_bus = NextBusObj(**service["NextBus"]) if "NextBus" in service else None
         next_bus2 = NextBusObj(**service["NextBus2"]) if "NextBus2" in service else None
         next_bus3 = NextBusObj(**service["NextBus3"]) if "NextBus3" in service else None
@@ -42,10 +48,10 @@ def get_bus_timings(bus_stop_code: str, bus_stop_desc = None) -> list:
         )
         service_obj_lst.append(service_obj)
 
-    bus_stop_name = bus_stop_desc if bus_stop_desc else bus_stop_code
+    bus_stop_name = bus_stop_desc if bus_stop_desc else bscode_to_desc_map[bus_stop_code]
     utc_plus_8 = timezone(timedelta(hours=8))
     curr_datetime = datetime.now(utc_plus_8)
-    print(curr_datetime)
+    # print(curr_datetime)
     table = convert_svc_obj_lst_to_table(service_obj_lst, bus_stop_name, curr_datetime)
     # msg = "<b>Busses arriving at {bus_stop_name}:</b>".format(bus_stop_name=bus_stop_name) + os.linesep
     # for i in range(len(service_obj_lst)):
@@ -54,17 +60,19 @@ def get_bus_timings(bus_stop_code: str, bus_stop_desc = None) -> list:
     #     msg += service.get_service_info() 
     #     if i < len(service_obj_lst) - 1:
     #         msg += "\n"
-    msg = "<pre>{arr_table}</pre>".format(arr_table=table)
-    print(msg)
+    dest_encoded = bus_stop_name.replace(" ", "+")
+    gmap_directn_link = "{base_url}/?api=1&destination={destination}&travelmode=walking".format(base_url=gmap_url_base, destination=dest_encoded)
+    msg = "<a href='{gmap_directn_link}'>Google Maps Directions</a>\n{arr_table}".format(arr_table=table, gmap_directn_link=gmap_directn_link)
+    # print(msg)
     return msg
 
 def convert_svc_obj_lst_to_table(service_obj_lst: list[Service], bus_stop_name: str, curr_dt: datetime) -> pt.PrettyTable:
-    table = pt.PrettyTable(["Bus", "Coming", "Next", "Following"])
-    table.title = "<b>Busses arriving at {bus_stop_name}</b>".format(bus_stop_name=bus_stop_name)
-    table.align['Bus'] = "l"
-    table.align['Coming In'] = "l"
-    table.align['Next'] = "l"
-    table.align['Following'] = "l"
+    table = pt.PrettyTable(["Bus", "Coming", "Next"])
+    table.title = "<b>Arriving at {bus_stop_name}</b>".format(bus_stop_name=bus_stop_name)
+    table.align['Bus'] = "c"
+    table.align['Coming In'] = "c"
+    table.align['Next'] = "c"
+    # table.align['Following'] = "l"
     for service in service_obj_lst:
         table.add_row(service.get_service_info_as_lst(curr_dt))
     return table
@@ -85,12 +93,13 @@ def getAllBusStops():
         bus_stop_arr.extend(bus_stops)
         skip_records += 500
         bus_stops = get_bus_stops(skip_records)
-    # print(len(bus_stop_arr))
-    # print(bus_stop_arr[:5])
-
+    for bus_stop in bus_stop_arr:
+        bscode = bus_stop["BusStopCode"]
+        desc = bus_stop["Description"]
+        bscode_to_desc_map[bscode] = desc
 
 def get_bus_stops(skip: int) -> list[dict]:
-    url = "https://datamall2.mytransport.sg/ltaodataservice/BusStops"
+    url = lta_odata_url + "/BusStops"
 
     lta_acc_key = os.getenv("LTA_ACC_KEY")
     # payload = {}
@@ -108,23 +117,24 @@ def get_bus_stops(skip: int) -> list[dict]:
     return response_json["value"]
 
 
-
 async def bus_timings_handler(update, context):
     arg_list = context.args
-    print(arg_list)
+    # print(arg_list)
     if not arg_list: 
         await update.message.reply_text("please provide 1 bus stop code", parse_mode=constants.ParseMode.HTML)
     else:
         bust_stop_code = arg_list[0]
-        await update.message.reply_text(get_bus_timings(bust_stop_code),  parse_mode=constants.ParseMode.HTML)
+        reply_markup = InlineKeyboardMarkup([InlineKeyboardButton("Update")])
+        print(reply_markup)
+        await update.message.reply_text(get_bus_timings(bust_stop_code), reply_markup = reply_markup, parse_mode=constants.ParseMode.MARKDOWN_V2, link_preview_options=LinkPreviewOptions(is_disabled=True))
     
 # todo: store favourites here
 async def start(update, context):
     await update.message.reply_text(
-        "<b>Basic Commands</b>:\n\n"
-        "`/start` - Start the bot\n"
-        "`/busstop 43029` - Get all bus timings at bus stop 43029\n"
-        "`Send your location via the telegram buttons and click on your desired bus stop for timings\n",
+        "<b>How to use</b>:\n\n"
+        "`1. /start` - Start the bot\n"
+        "`2. /busstop 43029` - Get all bus timings at bus stop 43029\n"
+        "`3. Send your location via the telegram buttons and click on your desired bus stop\n",
         parse_mode=constants.ParseMode.HTML
     )
 
@@ -150,15 +160,17 @@ async def callbackHandler(update, context):
     query_data = query.data
     query_data_split = query_data.split()
     command = query_data_split[0]
-    if command == '/busstop':
+    if command == '/busstop' or command == '/updatebusstop':
         bus_stop_code = query_data_split[1]
         first_whitespace_idx = query_data.index(" ")
         second_whitespace_idx = query_data.index(" ", first_whitespace_idx + 1)
-        # third_whitespace_idx = query_data.index(" ", second_whitespace_idx + 1)
         bus_stop_desc = query_data[second_whitespace_idx + 1:]
-        
-        # bust_stop_code = arg_list[0]
-        await update.callback_query.message.reply_text(get_bus_timings(bus_stop_code, bus_stop_desc),  parse_mode=constants.ParseMode.HTML)
+        callback_data_str = "/updatebusstop {bus_stop_code} {bus_stop_desc}".format(bus_stop_code=bus_stop_code, bus_stop_desc=bus_stop_desc)
+        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Update", callback_data=callback_data_str)]])
+        if command == '/busstop': 
+            await update.callback_query.message.reply_text(get_bus_timings(bus_stop_code, bus_stop_desc), reply_markup = reply_markup,  parse_mode=constants.ParseMode.HTML, link_preview_options=LinkPreviewOptions(is_disabled=True))
+        else:
+            await update.callback_query.message.edit_text(get_bus_timings(bus_stop_code, bus_stop_desc), reply_markup=reply_markup, parse_mode=constants.ParseMode.HTML, link_preview_options=LinkPreviewOptions(is_disabled=True))
     else:
         # CallbackQueries need to be answered, even if no notification to the user is needed
         # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
@@ -177,8 +189,9 @@ def main():
 
 if __name__ == "__main__":
     load_dotenv()
+    lta_odata_url = os.getenv("LTA_ODATA_URL")
+    gmap_url_base = os.getenv("GMAP_URL_BASE")
     getAllBusStops()
-    # get_bus_timings("43029")
     main()
 
 

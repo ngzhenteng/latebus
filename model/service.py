@@ -17,11 +17,11 @@ class Service:
         service_info_lst = []
         next_bus = self.NextBus.getTimeToArr(curr_dt) if self.NextBus else "NA"
         next_bus_2 = self.NextBus2.getTimeToArr(curr_dt) if self.NextBus2 else "NA"
-        next_bus_3 = self.NextBus3.getTimeToArr(curr_dt) if self.NextBus3 else "NA"
+        # next_bus_3 = self.NextBus3.getTimeToArr(curr_dt) if self.NextBus3 else "NA"
         service_info_lst.append(self.ServiceNo)
         service_info_lst.append(next_bus)
         service_info_lst.append(next_bus_2)
-        service_info_lst.append(next_bus_3)
+        # service_info_lst.append(next_bus_3)
         return service_info_lst
 
     def get_service_info(self) -> str:

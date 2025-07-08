@@ -1,2 +1,5 @@
 .env
 .DS_Store
+useful_cmds.sh
+*.pkg
+*__pycache__*
