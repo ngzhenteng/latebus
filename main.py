@@ -48,7 +48,7 @@ async def nearby_bus_stops_handler(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text("Nearest bus stops:", reply_markup=reply_markup)
 
-def get_bus_arr_tuple(main_msg: str, bus_stop_code: str, bus_stop_desc: str = None) -> TeleBusArrMsg:
+def get_tele_bus_arr_msg(main_msg: str, bus_stop_code: str, bus_stop_desc: str = None) -> TeleBusArrMsg:
     reply_markup = None
     if bus_stop_code:
         if bus_stop_desc:
@@ -69,7 +69,7 @@ async def callbackHandler(update, context):
         first_whitespace_idx = query_data.find(" ")
         second_whitespace_idx = query_data.find(" ", first_whitespace_idx + 1)
         bus_stop_desc = None if second_whitespace_idx == -1 else query_data[second_whitespace_idx + 1:]
-        tele_bus_arr_msg = get_bus_arr_tuple(bus_utils.get_bus_timings(bus_stop_code, bus_stop_desc), bus_stop_code, bus_stop_desc)
+        tele_bus_arr_msg = get_tele_bus_arr_msg(bus_utils.get_bus_timings(bus_stop_code), bus_stop_code, bus_stop_desc)
         if command == '/busstop': 
             await update.callback_query.message.reply_text(tele_bus_arr_msg.message, reply_markup=tele_bus_arr_msg.reply_markup,  parse_mode=constants.ParseMode.HTML, link_preview_options=LinkPreviewOptions(is_disabled=True))
         else:
@@ -80,13 +80,21 @@ async def callbackHandler(update, context):
         await query.answer()
 
 async def llm_chat_handler(update, context):
+    await update.message.reply_chat_action(constants.ChatAction.TYPING)
     input = update.message.text
+    chat_id = update.message.from_user.id
+    if not chat_id: raise Exception("Error, unable to obtain user id")
     if input == None or len(input) == 0:
         await update.message.reply_text("Please send a message")
     else:
-        ai_bus_arr_card = ai_agent.handle_user_msg(input=input, bus_utils=bus_utils)
-        tele_bus_arr_msg = get_bus_arr_tuple(ai_bus_arr_card.card_content, ai_bus_arr_card.bus_stop_code)
+        ai_bus_arr_card = ai_agent.handle_user_msg(input=input, chat_id=chat_id)
+        tele_bus_arr_msg = get_tele_bus_arr_msg(ai_bus_arr_card.card_content, ai_bus_arr_card.bus_stop_code)
         await update.message.reply_text(tele_bus_arr_msg.message, reply_markup=tele_bus_arr_msg.reply_markup, parse_mode=constants.ParseMode.HTML, link_preview_options=LinkPreviewOptions(is_disabled=True))
+
+# TODO: capture Exception message here
+async def generic_error_handler(update, context) -> None:
+    print(f"Error: {context.error}")
+    await update.message.reply_text("Sorry, we failed to process your request")
 
 def main():
     token = os.getenv("TELE_BOT_API_KEY")
@@ -96,6 +104,7 @@ def main():
     application.add_handler(MessageHandler(filters.LOCATION, nearby_bus_stops_handler))
     application.add_handler(CallbackQueryHandler(callbackHandler))
     application.add_handler(MessageHandler(filters.TEXT, llm_chat_handler))
+    application.add_error_handler(generic_error_handler)
     print("Telegram Bot started!", flush=True)
     application.run_polling()
 
@@ -105,9 +114,7 @@ if __name__ == "__main__":
     lta_acc_key = os.getenv("LTA_ACC_KEY")
     gmap_url_base = os.getenv("GMAP_URL_BASE")
     bus_utils = BusUtils(lta_odata_url, lta_acc_key, gmap_url_base)
-    ai_agent = AiAgent()
-    # ai_agent.handle_user_msg("BUsses arriving at Bugis Station exit b", bus_utils=bus_utils)
-    # print(bus_utils.search_busstop_desc("pacific"))
+    ai_agent = AiAgent(bus_utils=bus_utils)
     main()
 
 

@@ -47,11 +47,12 @@ class BusUtils:
     def get_bus_timings_via_bus_stop_desc(self, bus_stop_desc: str) -> str:
         bus_stop_code = self.bsdesc_to_code_map[bus_stop_desc]
         if bus_stop_code:
-            return self.get_bus_timings(bus_stop_code, bus_stop_desc)
+            return self.get_bus_timings(bus_stop_code)
         return "Bus stop name {bus_stop_desc} not recognised".format(bus_stop_desc=bus_stop_desc)
 
-    def get_bus_timings(self, bus_stop_code: str, bus_stop_desc: str = None) -> str:
+    def get_bus_timings(self, bus_stop_code: str) -> str:
         url = self.lta_odata_url + "/v3/BusArrival"
+        if not self.bscode_to_desc_map[bus_stop_code]: raise Exception(f"bus_stop_code {bus_stop_code} does not exist")
 
         # payload = {}
         params = {
@@ -81,7 +82,7 @@ class BusUtils:
             )
             service_obj_lst.append(service_obj)
 
-        bus_stop_name = bus_stop_desc if bus_stop_desc else self.bscode_to_desc_map[bus_stop_code]
+        bus_stop_name = self.bscode_to_desc_map[bus_stop_code]
         utc_plus_8 = timezone(timedelta(hours=8))
         curr_datetime = datetime.now(utc_plus_8)
         # print(curr_datetime)
@@ -150,7 +151,7 @@ class BusUtils:
         # vector store
         embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
         self.busstop_vector_store = InMemoryVectorStore(embeddings)
-        self.busstop_vector_store.add_documents(vector_store_documents[:20]) # TODO: allow all bus stops to be embedded in vectorstore, not just 10.
+        self.busstop_vector_store.add_documents(vector_store_documents) # TODO: allow all bus stops to be embedded in vectorstore, not just 10.
 
 
 
