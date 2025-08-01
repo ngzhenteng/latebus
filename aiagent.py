@@ -1,4 +1,4 @@
-from langchain_tavily import TavilySearch
+# from langchain_tavily import TavilySearch
 from langchain.chat_models import init_chat_model
 from langgraph.prebuilt import create_react_agent
 from langchain_core.tools import tool
@@ -25,7 +25,7 @@ class AiAgent:
 
     def __init__(self, bus_utils: BusUtils):
         if bus_utils is None: raise Exception("bus_utils None in constructor")
-        self.search = TavilySearch(max_results=2)
+        # self.search = TavilySearch(max_results=2)
         self.model = init_chat_model("gemini-2.0-flash", model_provider="google_genai")
         self.bus_utils = bus_utils
         self.init_agent_executor()
@@ -65,7 +65,7 @@ class AiAgent:
             # `messages` key (see the note below)
             return {"llm_input_messages": trimmed_messages}
 
-        tools = [self.search, search_busstop, get_bus_timings_via_bus_stop_code]
+        tools = [search_busstop, get_bus_timings_via_bus_stop_code]
         self.llm_memory = MemorySaver()
         self.agent_executor = create_react_agent(self.model, tools, checkpointer=self.llm_memory, pre_model_hook=pre_model_hook, post_model_hook=delete_messages)
 
@@ -93,8 +93,8 @@ class AiAgent:
 
         bus_stop_code = None
         final_ai_msg = None
-        for message in response["messages"]:
-            message.pretty_print()
+        # for message in response["messages"]:
+        #     message.pretty_print()
             # if isinstance(message, ToolMessage):
             #     if message.name == "get_bus_timings_via_bus_stop_code":
             #         final_ai_msg = message.content

@@ -94,6 +94,7 @@ async def llm_chat_handler(update, context):
 # TODO: capture Exception message here
 async def generic_error_handler(update, context) -> None:
     print(f"Error: {context.error}")
+    if update is None: return
     await update.message.reply_text("Sorry, we failed to process your request")
 
 def main():

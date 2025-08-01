@@ -15,13 +15,13 @@ haversine==2.9.0
 
 # ai tools
 # pip install -U langgraph langchain-tavily langgraph-checkpoint-sqlite langchain-ollama
-langgraph==0.5.1
-langchain-tavily==0.2.7
-langgraph-checkpoint-sqlite==2.0.10
-# langchain_core ?
-# langchain-openai==0.3.27 # pip install -qU "langchain[openai]"
-langchain[google-genai]==latest# pip install -qU "langchain[google-genai]"
-numpy==latest# pip install numpy
+langgraph
+langchain-tavily
+langgraph-checkpoint-sqlite
+# pip install -qU "langchain[google-genai]"
+langchain[google-genai]
+# pip install numpy
+numpy==2.3.2
 
 
 
