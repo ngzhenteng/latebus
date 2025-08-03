@@ -144,9 +144,10 @@ class BusUtils:
             bus_stop = self.bus_stop_arr[i]
             bus_stop_code = bus_stop["BusStopCode"]
             desc = bus_stop["Description"]
+            road_name = bus_stop["RoadName"]
             self.bscode_to_desc_map[bus_stop_code] = desc
             self.bsdesc_to_code_map[desc] = bus_stop_code
-            vector_store_documents.append(Document(id=i, page_content=desc, metadata={"bus_stop_code": bus_stop_code}))
+            vector_store_documents.append(Document(id=i, page_content=desc, metadata={"bus_stop_code": bus_stop_code, "road_name": road_name}))
 
         # vector store
         embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")

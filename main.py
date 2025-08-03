@@ -1,5 +1,5 @@
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler
-from telegram import constants, ReplyKeyboardMarkup, Location, InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions
+from telegram import constants, ReplyKeyboardMarkup, Location, InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, KeyboardButton
 from dotenv import load_dotenv
 import os
 
@@ -23,13 +23,18 @@ async def bus_timings_handler(update, context):
     
 # todo: store favourites here
 async def start(update, context):
+    reply_markup = get_bus_stop_near_me_keyboard_markup()
     await update.message.reply_text(
-        "<b>How to use</b>:\n\n"
-        "`1. Send your location via the telegram buttons and click on your desired bus stop\n"
-        "`2. /busstop 43029` - Get all bus timings at bus stop 43029\n"
-        "`3. Simply send a message to the bot to find out more!",
-        parse_mode=constants.ParseMode.HTML
-    )
+       "<b>Welcome to latebus, your Bus Arrival Time AI Agent</b>\n\n"
+        "- ❔ Simply chat! You can ask any questions, e.g. <i>“bus arrivals at Toa Payoh Stn”</i>.\n"
+        "- 📍 Or send your location via the Telegram button, then tap your desired bus stop from the list.\n",
+        parse_mode=constants.ParseMode.HTML, reply_markup=reply_markup)
+
+def get_bus_stop_near_me_keyboard_markup():
+    location_keyboard = KeyboardButton(text="Bus Stops Near Me", request_location=True)
+    custom_keyboard = [[location_keyboard]]
+    reply_markup = ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True)
+    return reply_markup
 
 async def nearby_bus_stops_handler(update, context):
     location = update.message.location
@@ -79,6 +84,7 @@ async def callbackHandler(update, context):
         # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
         await query.answer()
 
+# formats response in Markdown_v2 as the llm tends to reply in markdown
 async def llm_chat_handler(update, context):
     await update.message.reply_chat_action(constants.ChatAction.TYPING)
     input = update.message.text
@@ -89,7 +95,7 @@ async def llm_chat_handler(update, context):
     else:
         ai_bus_arr_card = ai_agent.handle_user_msg(input=input, chat_id=chat_id)
         tele_bus_arr_msg = get_tele_bus_arr_msg(ai_bus_arr_card.card_content, ai_bus_arr_card.bus_stop_code)
-        await update.message.reply_text(tele_bus_arr_msg.message, reply_markup=tele_bus_arr_msg.reply_markup, parse_mode=constants.ParseMode.HTML, link_preview_options=LinkPreviewOptions(is_disabled=True))
+        await update.message.reply_text(tele_bus_arr_msg.message, reply_markup=tele_bus_arr_msg.reply_markup, parse_mode=constants.ParseMode.MARKDOWN, link_preview_options=LinkPreviewOptions(is_disabled=True))
 
 # TODO: capture Exception message here
 async def generic_error_handler(update, context) -> None:

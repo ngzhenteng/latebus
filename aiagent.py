@@ -86,7 +86,9 @@ class AiAgent:
         #     [("system", "Always preserve the responses from get_bus_timings_via_bus_stop_code tool"), ("user", "{text}")]
         # )
         # prompt_template.invoke({"text": "What time are busses arriving at bugis station exit b? Always search for the bus stop code if not provided"})
-        system_message = {"role": "system", "content": "You help users find bus stops and bus arrival times. Always search for the bus stop code using search_busstop tool if the prompt does not provide. Always format your responses in lists where apt"}
+        system_message = {"role": "system", "content": "You help users find bus stops and bus arrival times. "
+        "Always search for the bus stop code using search_busstop tool, if the prompt does not provide. "
+        "Always format your responses using markdown format. Format lists with each item on a new line."}
         input_message = {"role": "user", "content": input}
         config = {"configurable": {"thread_id": chat_id}}
         response = self.agent_executor.invoke({"messages": [system_message, input_message]}, config=config)
