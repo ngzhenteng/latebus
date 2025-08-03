@@ -49,7 +49,7 @@ class AiAgent:
         @tool
         def get_bus_timings_via_bus_stop_code(bus_stop_code: str) -> str:
             """Get bus arrival timings at a bus stop via the bus_stop_code. bus_stop_code is found in the search_busstop response.
-            Pass BusStopCode as bus_stop_code argument in this tool, pass Description as bus_stop_desc argument in this tool"""
+            Pass BusStopCode as bus_stop_code argument in this tool, pass Description as bus_stop_desc argument in this tool. Always return the returned value of this tool as-is."""
             return self.bus_utils.get_bus_timings(bus_stop_code=bus_stop_code)
         
         def delete_messages(state):
@@ -87,8 +87,8 @@ class AiAgent:
         # )
         # prompt_template.invoke({"text": "What time are busses arriving at bugis station exit b? Always search for the bus stop code if not provided"})
         system_message = {"role": "system", "content": "You help users find bus stops and bus arrival times. "
-        "Always search for the bus stop code using search_busstop tool, if the prompt does not provide. "
-        "Always format your responses using markdown format. Format lists with each item on a new line."}
+        "Always search for the bus stop code using search_busstop tool if the prompt does not provide. "
+        "Always format your responses using markdown format. Format lists using bullet points, with each item on a new line. Avoid using commas for list formatting."}
         input_message = {"role": "user", "content": input}
         config = {"configurable": {"thread_id": chat_id}}
         response = self.agent_executor.invoke({"messages": [system_message, input_message]}, config=config)
