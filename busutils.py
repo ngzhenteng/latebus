@@ -158,7 +158,7 @@ class BusUtils:
         # vector store
         embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
         self.busstop_vector_store = InMemoryVectorStore(embeddings)
-        self.busstop_vector_store.add_documents(vector_store_documents[:5]) # TODO: allow all bus stops to be embedded in vectorstore, not just 10.
+        self.busstop_vector_store.add_documents(vector_store_documents) # TODO: allow all bus stops to be embedded in vectorstore, not just 10.
 
 
 
