@@ -51,6 +51,11 @@ class BusUtils:
         return "Bus stop name {bus_stop_desc} not recognised".format(bus_stop_desc=bus_stop_desc)
 
     def get_bus_timings(self, bus_stop_code: str) -> str:
+        def service_obj_sorter(service_obj: Service):
+            service_no = service_obj.ServiceNo;
+            service_no_digit_str = "".join([char for char in service_no if char.isdigit()])
+            return int(service_no_digit_str)
+            
         url = self.lta_odata_url + "/v3/BusArrival"
         if not self.bscode_to_desc_map[bus_stop_code]: raise Exception(f"bus_stop_code {bus_stop_code} does not exist")
 
@@ -82,6 +87,7 @@ class BusUtils:
             )
             service_obj_lst.append(service_obj)
 
+        service_obj_lst.sort(key=service_obj_sorter)
         bus_stop_name = self.bscode_to_desc_map[bus_stop_code]
         utc_plus_8 = timezone(timedelta(hours=8))
         curr_datetime = datetime.now(utc_plus_8)
@@ -96,13 +102,13 @@ class BusUtils:
         #         msg += "\n"
         dest_encoded = bus_stop_name.replace(" ", "+")
         gmap_directn_link = "{base_url}/?api=1&destination={destination}&travelmode=walking".format(base_url=self.gmap_url_base, destination=dest_encoded)
-        msg = "<a href='{gmap_directn_link}'>Google Maps Directions</a>\n{arr_table}".format(arr_table=table, gmap_directn_link=gmap_directn_link)
+        msg = "[Navigate using google maps]({gmap_directn_link})\n{arr_table}".format(arr_table=table, gmap_directn_link=gmap_directn_link)
         # print(msg)
         return msg
 
     def convert_svc_obj_lst_to_table(self, service_obj_lst: list[Service], bus_stop_name: str, curr_dt: datetime) -> pt.PrettyTable:
         table = pt.PrettyTable(["Bus", "Coming", "Next"])
-        table.title = "<b>Arriving at {bus_stop_name}</b>".format(bus_stop_name=bus_stop_name)
+        table.title = "__Arriving at {bus_stop_name}__".format(bus_stop_name=bus_stop_name)
         table.align['Bus'] = "c"
         table.align['Coming In'] = "c"
         table.align['Next'] = "c"
@@ -152,7 +158,7 @@ class BusUtils:
         # vector store
         embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
         self.busstop_vector_store = InMemoryVectorStore(embeddings)
-        self.busstop_vector_store.add_documents(vector_store_documents) # TODO: allow all bus stops to be embedded in vectorstore, not just 10.
+        self.busstop_vector_store.add_documents(vector_store_documents[:5]) # TODO: allow all bus stops to be embedded in vectorstore, not just 10.
 
 
 

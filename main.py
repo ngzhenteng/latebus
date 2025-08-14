@@ -14,12 +14,12 @@ async def bus_timings_handler(update, context):
     arg_list = context.args
     # print(arg_list)
     if not arg_list: 
-        await update.message.reply_text("please provide 1 bus stop code", parse_mode=constants.ParseMode.HTML)
+        await update.message.reply_text("please provide 1 bus stop code", parse_mode=constants.ParseMode.MARKDOWN)
     else:
         bust_stop_code = arg_list[0]
         reply_markup = InlineKeyboardMarkup([InlineKeyboardButton("Update")])
         print(reply_markup)
-        await update.message.reply_text(bus_utils.get_bus_timings(bust_stop_code), reply_markup = reply_markup, parse_mode=constants.ParseMode.MARKDOWN_V2, link_preview_options=LinkPreviewOptions(is_disabled=True))
+        await update.message.reply_text(bus_utils.get_bus_timings(bust_stop_code), reply_markup = reply_markup, parse_mode=constants.ParseMode.MARKDOWN, link_preview_options=LinkPreviewOptions(is_disabled=True))
     
 # todo: store favourites here
 async def start(update, context):
@@ -76,9 +76,9 @@ async def callbackHandler(update, context):
         bus_stop_desc = None if second_whitespace_idx == -1 else query_data[second_whitespace_idx + 1:]
         tele_bus_arr_msg = get_tele_bus_arr_msg(bus_utils.get_bus_timings(bus_stop_code), bus_stop_code, bus_stop_desc)
         if command == '/busstop': 
-            await update.callback_query.message.reply_text(tele_bus_arr_msg.message, reply_markup=tele_bus_arr_msg.reply_markup,  parse_mode=constants.ParseMode.HTML, link_preview_options=LinkPreviewOptions(is_disabled=True))
+            await update.callback_query.message.reply_text(tele_bus_arr_msg.message, reply_markup=tele_bus_arr_msg.reply_markup,  parse_mode=constants.ParseMode.MARKDOWN, link_preview_options=LinkPreviewOptions(is_disabled=True))
         else:
-            await update.callback_query.message.edit_text(tele_bus_arr_msg.message, reply_markup=tele_bus_arr_msg.reply_markup, parse_mode=constants.ParseMode.HTML, link_preview_options=LinkPreviewOptions(is_disabled=True))
+            await update.callback_query.message.edit_text(tele_bus_arr_msg.message, reply_markup=tele_bus_arr_msg.reply_markup, parse_mode=constants.ParseMode.MARKDOWN, link_preview_options=LinkPreviewOptions(is_disabled=True))
     else:
         # CallbackQueries need to be answered, even if no notification to the user is needed
         # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery

@@ -39,18 +39,12 @@ class AiAgent:
             """Get all bus stops with a description similar to 'description'"""
             return self.bus_utils.search_busstop(description=description)
 
-        # @tool
-        # def get_bus_timings_via_bus_stop_desc(bus_stop_desc: str):
-        #     """Get bus arrival timings at a bus stop, via the bus stop name, 
-        #     which is found in the Description json response field in the all_busstops_tool tool's response.
-        #     pass Description as bus_stop_desc argument in this tool"""
-        #     return bus_utils.get_bus_timings_via_bus_stop_desc(bus_stop_desc)
-
         @tool
         def get_bus_timings_via_bus_stop_code(bus_stop_code: str) -> str:
             """Get bus arrival timings at a bus stop via the bus_stop_code. bus_stop_code is found in the search_busstop response.
             Pass BusStopCode as bus_stop_code argument in this tool, pass Description as bus_stop_desc argument in this tool. Always return the returned value of this tool as-is."""
-            return self.bus_utils.get_bus_timings(bus_stop_code=bus_stop_code)
+            result = "Reproduce this hyperlink and table exactly as it is, do not rephrase anything after +----------------------------------------+\n" + self.bus_utils.get_bus_timings(bus_stop_code=bus_stop_code)
+            return result
         
         def delete_messages(state):
             messages_to_remove = state["messages"]
@@ -70,41 +64,26 @@ class AiAgent:
         self.agent_executor = create_react_agent(self.model, tools, checkpointer=self.llm_memory, pre_model_hook=pre_model_hook, post_model_hook=delete_messages)
 
     def handle_user_msg(self, input: str, chat_id: str) -> AiBusArrCard:
-        # search_results = search.invoke("What is the weather in Singapore")
-        # print(search_results)
         
-
-        # model_with_tools = model.bind_tools(tools)
-
-        # query = "Search for the weather in Singapore"
-        # response = model_with_tools.invoke([{"role": "user", "content": query}])
-
-        # print(f"Message content: {response.text()}\n")
-        # print(f"Tool calls: {response.tool_calls}")
-
-        # prompt_template = ChatPromptTemplate.from_messages(
-        #     [("system", "Always preserve the responses from get_bus_timings_via_bus_stop_code tool"), ("user", "{text}")]
-        # )
-        # prompt_template.invoke({"text": "What time are busses arriving at bugis station exit b? Always search for the bus stop code if not provided"})
-        system_message = {"role": "system", "content": "You help users find bus stops and bus arrival times. "
-        "Always search for the bus stop code using search_busstop tool if the prompt does not provide. "
-        "Always format your responses using markdown format. Format lists using bullet points, with each item on a new line. Avoid using commas for list formatting."}
+        system_message = {"role": "system", "content": "You are a helpful and friendly assistant that helps users find bus stops and bus arrival times."
+        "When you come across a table such as "
+        "+----------------------------------------+"
+        "| Arriving at Hotel Grand Pacific |"
+        "+-------+---------------+----------------+"
+        "|  Bus  |     Coming    |      Next      |"
+        "+-------+---------------+----------------+"
+        "|   12  |     16m 1s    |     28m 1s     |"
+        "|  12e  |     35m 7s    |       NA       |"
+        "|  175  |     4m 44s    |    28m 19s     |"
+        "+-------+---------------+----------------+"
+        "include the table as-is in your response"
+        "Always search for the bus stop code using search_busstop tool if the prompt does not provide. "}
         input_message = {"role": "user", "content": input}
         config = {"configurable": {"thread_id": chat_id}}
         response = self.agent_executor.invoke({"messages": [system_message, input_message]}, config=config)
 
         bus_stop_code = None
         final_ai_msg = None
-        # for message in response["messages"]:
-        #     message.pretty_print()
-            # if isinstance(message, ToolMessage):
-            #     if message.name == "get_bus_timings_via_bus_stop_code":
-            #         final_ai_msg = message.content
-            # if not isinstance(message, AIMessage) or not message.tool_calls or bus_stop_code:
-            #     continue
-            # for tool_call in message.tool_calls:
-            #     if tool_call["name"] == "get_bus_timings_via_bus_stop_code": 
-            #         bus_stop_code = tool_call["args"]["bus_stop_code"]
 
         response_msgs = response["messages"]
         # logic to send update button, only when 2 messages before the AI Message has a tool call to get_bus_timings_via_bus_stop_code
