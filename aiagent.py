@@ -13,6 +13,7 @@ from langchain_core.messages.system import SystemMessage
 import os
 from busutils import BusUtils
 from model.ai_bus_arr_card import AiBusArrCard
+from sort_strategy.service_no_sort_strategy import ServiceNoSortStrategy
 
 class AiAgent:
     search = None
@@ -43,7 +44,7 @@ class AiAgent:
         def get_bus_timings_via_bus_stop_code(bus_stop_code: str) -> str:
             """Get bus arrival timings at a bus stop via the bus_stop_code. bus_stop_code is found in the search_busstop response.
             Pass BusStopCode as bus_stop_code argument in this tool, pass Description as bus_stop_desc argument in this tool. Always return the returned value of this tool as-is."""
-            result = "Reproduce this hyperlink and table exactly as it is, do not rephrase anything after +----------------------------------------+\n" + self.bus_utils.get_bus_timings(bus_stop_code=bus_stop_code)
+            result = "Reproduce this hyperlink and table exactly as it is, do not rephrase anything after +----------------------------------------+\n" + self.bus_utils.get_bus_timings(bus_stop_code=bus_stop_code, sortStrategy=ServiceNoSortStrategy())
             return result
         
         def delete_messages(state):
@@ -65,19 +66,21 @@ class AiAgent:
 
     def handle_user_msg(self, input: str, chat_id: str) -> AiBusArrCard:
         
-        system_message = {"role": "system", "content": "You are a helpful and friendly assistant that helps users find bus stops and bus arrival times."
-        "When you come across a table such as "
-        "+----------------------------------------+"
-        "| Arriving at Hotel Grand Pacific |"
-        "+-------+---------------+----------------+"
-        "|  Bus  |     Coming    |      Next      |"
-        "+-------+---------------+----------------+"
-        "|   12  |     16m 1s    |     28m 1s     |"
-        "|  12e  |     35m 7s    |       NA       |"
-        "|  175  |     4m 44s    |    28m 19s     |"
-        "+-------+---------------+----------------+"
-        "include the table as-is in your response"
-        "Always search for the bus stop code using search_busstop tool if the prompt does not provide. "}
+        system_message = {
+            "role": "system", "content": "Your only purpose is to help users find bus stops and bus arrival times."
+            "Always first try to search for the bus stop code using 'search_busstop' tool, if the prompt does not provide."
+            "Never list the bus stop code without its description."
+            "When you come across a table from the 'get_bus_timings_via_bus_stop_code' tool such as "
+            "+----------------------------------------+"
+            "| Arriving at Hotel Grand Pacific |"
+            "+-------+---------------+----------------+"
+            "|  Bus  |     Coming    |      Next      |"
+            "+-------+---------------+----------------+"
+            "|   12  |     16m 1s    |     28m 1s     |"
+            "|  12e  |     35m 7s    |       NA       |"
+            "|  175  |     4m 44s    |    28m 19s     |"
+            "+-------+---------------+----------------+"
+            "include the table as-is in your response"}
         input_message = {"role": "user", "content": input}
         config = {"configurable": {"thread_id": chat_id}}
         response = self.agent_executor.invoke({"messages": [system_message, input_message]}, config=config)

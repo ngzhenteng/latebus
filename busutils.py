@@ -1,6 +1,10 @@
 import requests
 from model.next_bus import NextBusObj
 from model.service import Service
+from sort_strategy.service_sort_strategy_abc import ServiceSortStrategy
+from sort_strategy.service_no_sort_strategy import ServiceNoSortStrategy
+from sort_strategy.service_arr_sort_strategy import ServiceArrSortStrategy
+
 import heapq
 import haversine
 from haversine import Unit
@@ -47,15 +51,10 @@ class BusUtils:
     def get_bus_timings_via_bus_stop_desc(self, bus_stop_desc: str) -> str:
         bus_stop_code = self.bsdesc_to_code_map[bus_stop_desc]
         if bus_stop_code:
-            return self.get_bus_timings(bus_stop_code)
+            return self.get_bus_timings(bus_stop_code, ServiceNoSortStrategy())
         return "Bus stop name {bus_stop_desc} not recognised".format(bus_stop_desc=bus_stop_desc)
 
-    def get_bus_timings(self, bus_stop_code: str) -> str:
-        def service_obj_sorter(service_obj: Service):
-            service_no = service_obj.ServiceNo;
-            service_no_digit_str = "".join([char for char in service_no if char.isdigit()])
-            return int(service_no_digit_str)
-            
+    def get_bus_timings(self, bus_stop_code: str, sortStrategy: ServiceSortStrategy) -> str:            
         url = self.lta_odata_url + "/v3/BusArrival"
         if not self.bscode_to_desc_map[bus_stop_code]: raise Exception(f"bus_stop_code {bus_stop_code} does not exist")
 
@@ -87,7 +86,7 @@ class BusUtils:
             )
             service_obj_lst.append(service_obj)
 
-        service_obj_lst.sort(key=service_obj_sorter)
+        service_obj_lst.sort(key=sortStrategy.service_obj_sorter)
         bus_stop_name = self.bscode_to_desc_map[bus_stop_code]
         utc_plus_8 = timezone(timedelta(hours=8))
         curr_datetime = datetime.now(utc_plus_8)

@@ -24,10 +24,19 @@ class NextBusObj:
     
     # returns the time to this NextBusObj in MM:ss format e.g. 04m3s
     def getTimeToArr(self, curr_datetime: datetime) -> str:
-        if not self.EstimatedArrival or len(self.EstimatedArrival) == 0: return "NA"
+        try:
+            diff_in_secs = self.getTimeToArrInSecs(curr_datetime)
+            if (diff_in_secs <= 0.0): return "Arr"
+            minutes, seconds = divmod(int(diff_in_secs), 60)
+            return "{minutes}m {seconds}s".format(minutes=minutes, seconds=seconds)
+        except:
+            return "NA"
+
+
+    def getTimeToArrInSecs(self, curr_datetime: datetime) -> float:
+        if not self.EstimatedArrival or len(self.EstimatedArrival) == 0: raise ValueError("EstimatedArrival is NA")
+        if self.EstimatedArrival == "Arr": return 0.0
         arr_datetime = datetime.strptime(self.EstimatedArrival, "%Y-%m-%dT%H:%M:%S%z")
         diff_in_secs = (arr_datetime - curr_datetime).total_seconds()
-        if (diff_in_secs < 0.0): return "Arr"
-        minutes, seconds = divmod(int(diff_in_secs), 60)
-        return "{minutes}m {seconds}s".format(minutes=minutes, seconds=seconds)
+        return diff_in_secs
 

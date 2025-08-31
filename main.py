@@ -2,10 +2,14 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from telegram import constants, ReplyKeyboardMarkup, Location, InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, KeyboardButton
 from dotenv import load_dotenv
 import os
+import traceback
 
 from busutils import BusUtils
 from aiagent import AiAgent
 from model.tele_bus_arr_msg import TeleBusArrMsg
+from sort_strategy.service_sort_strategy_abc import ServiceSortStrategy
+from sort_strategy.service_no_sort_strategy import ServiceNoSortStrategy
+from sort_strategy.service_arr_sort_strategy import ServiceArrSortStrategy
 
 bus_utils = None
 ai_agent = None
@@ -18,8 +22,7 @@ async def bus_timings_handler(update, context):
     else:
         bust_stop_code = arg_list[0]
         reply_markup = InlineKeyboardMarkup([InlineKeyboardButton("Update")])
-        print(reply_markup)
-        await update.message.reply_text(bus_utils.get_bus_timings(bust_stop_code), reply_markup = reply_markup, parse_mode=constants.ParseMode.MARKDOWN, link_preview_options=LinkPreviewOptions(is_disabled=True))
+        await update.message.reply_text(bus_utils.get_bus_timings(bust_stop_code, ServiceNoSortStrategy()), reply_markup = reply_markup, parse_mode=constants.ParseMode.MARKDOWN, link_preview_options=LinkPreviewOptions(is_disabled=True))
     
 # todo: store favourites here
 async def start(update, context):
@@ -57,10 +60,15 @@ def get_tele_bus_arr_msg(main_msg: str, bus_stop_code: str, bus_stop_desc: str =
     reply_markup = None
     if bus_stop_code:
         if bus_stop_desc:
-            callback_data_str = "/updatebusstop {bus_stop_code} {bus_stop_desc}".format(bus_stop_code=bus_stop_code, bus_stop_desc=bus_stop_desc)
+            updatebusstop_callback_str = "/updatebusstop {bus_stop_code} {bus_stop_desc}".format(bus_stop_code=bus_stop_code, bus_stop_desc=bus_stop_desc)
+            updatebusstopSortByArr_callback_str = "/updatebusstopSortByArr {bus_stop_code} {bus_stop_desc}".format(bus_stop_code=bus_stop_code, bus_stop_desc=bus_stop_desc)
         else:
-            callback_data_str = "/updatebusstop {bus_stop_code}".format(bus_stop_code=bus_stop_code)
-        reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("Update", callback_data=callback_data_str)]])
+            updatebusstop_callback_str = "/updatebusstop {bus_stop_code}".format(bus_stop_code=bus_stop_code)
+            updatebusstopSortByArr_callback_str = "/updatebusstopSortByArr {bus_stop_code}".format(bus_stop_code=bus_stop_code)
+        reply_markup = InlineKeyboardMarkup([[
+            InlineKeyboardButton("🔄(sort by bus no.)", callback_data=updatebusstop_callback_str),
+            InlineKeyboardButton("🔄(sort by arriv.)", callback_data=updatebusstopSortByArr_callback_str),
+        ]])
     return TeleBusArrMsg(main_msg, reply_markup)
 
 
@@ -69,12 +77,13 @@ async def callbackHandler(update, context):
     query_data = query.data
     query_data_split = query_data.split()
     command = query_data_split[0]
-    if command == '/busstop' or command == '/updatebusstop':
+    if command == '/busstop' or command == '/updatebusstop' or command == '/updatebusstopSortByArr':
         bus_stop_code = query_data_split[1]
         first_whitespace_idx = query_data.find(" ")
         second_whitespace_idx = query_data.find(" ", first_whitespace_idx + 1)
         bus_stop_desc = None if second_whitespace_idx == -1 else query_data[second_whitespace_idx + 1:]
-        tele_bus_arr_msg = get_tele_bus_arr_msg(bus_utils.get_bus_timings(bus_stop_code), bus_stop_code, bus_stop_desc)
+        sort_strategy = ServiceArrSortStrategy() if command == '/updatebusstopSortByArr' else ServiceNoSortStrategy()
+        tele_bus_arr_msg = get_tele_bus_arr_msg(bus_utils.get_bus_timings(bus_stop_code, sort_strategy), bus_stop_code, bus_stop_desc)
         if command == '/busstop': 
             await update.callback_query.message.reply_text(tele_bus_arr_msg.message, reply_markup=tele_bus_arr_msg.reply_markup,  parse_mode=constants.ParseMode.MARKDOWN, link_preview_options=LinkPreviewOptions(is_disabled=True))
         else:
@@ -99,7 +108,10 @@ async def llm_chat_handler(update, context):
 
 # TODO: capture Exception message here
 async def generic_error_handler(update, context) -> None:
-    print(f"Error: {context.error}")
+    print(f"error: {context.error}")
+    tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
+    tb_string = "".join(tb_list)
+    print(f"traceback: {tb_string}")
     if update is None or update.message is None: return
     await update.message.reply_text("Sorry, we failed to process your request")
 
