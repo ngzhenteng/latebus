@@ -12,3 +12,16 @@ typing_extensions==4.12.2
 prettytable==3.16.0
 requests==2.32.3
 haversine==2.9.0
+
+# ai tools
+# pip install -U langgraph langchain-tavily langgraph-checkpoint-sqlite langchain-ollama
+langgraph
+langchain-tavily
+langgraph-checkpoint-sqlite
+# pip install -qU "langchain[google-genai]"
+langchain[google-genai]
+# pip install numpy
+numpy
+
+
+
