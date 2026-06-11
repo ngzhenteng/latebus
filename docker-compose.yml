@@ -1,0 +1,19 @@
+services:
+  chromadb:
+    image: chromadb/chroma:1.5.9
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./chroma_data:/data
+    environment:
+      - IS_PERSISTENT=TRUE
+
+  latebus:
+    build: .
+    depends_on:
+      - chromadb
+    env_file:
+      - .env
+    environment:
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000

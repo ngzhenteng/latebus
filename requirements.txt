@@ -15,13 +15,16 @@ haversine==2.9.0
 
 # ai tools
 # pip install -U langgraph langchain-tavily langgraph-checkpoint-sqlite langchain-ollama
-langgraph
+langgraph>=0.5.4
 langchain-tavily
 langgraph-checkpoint-sqlite
 # pip install -qU "langchain[google-genai]"
 langchain[google-genai]
 # pip install numpy
 numpy
+# chromadb persistent vector store
+chromadb==1.5.9
+langchain-chroma
 
 
 

@@ -1,3 +1,4 @@
+import os
 import requests
 from model.next_bus import NextBusObj
 from model.service import Service
@@ -11,8 +12,8 @@ from haversine import Unit
 import prettytable as pt
 from datetime import datetime, timezone, timedelta
 
-from langchain_core.vectorstores import InMemoryVectorStore
-from langchain_core.documents import Document
+import chromadb
+from langchain_chroma import Chroma
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 class BusUtils:
@@ -109,7 +110,7 @@ class BusUtils:
         table = pt.PrettyTable(["Bus", "Coming", "Next"])
         table.title = "__Arriving at {bus_stop_name}__".format(bus_stop_name=bus_stop_name)
         table.align['Bus'] = "c"
-        table.align['Coming In'] = "c"
+        table.align['Coming'] = "c"
         table.align['Next'] = "c"
         # table.align['Following'] = "l"
         for service in service_obj_lst:
@@ -143,21 +144,24 @@ class BusUtils:
             self.bus_stop_arr.extend(bus_stops)
             skip_records += 500
             bus_stops = self.get_bus_stops(skip_records)
-        vector_store_documents = []
 
-        for i in range(0, len(self.bus_stop_arr)):
-            bus_stop = self.bus_stop_arr[i]
+        for bus_stop in self.bus_stop_arr:
             bus_stop_code = bus_stop["BusStopCode"]
             desc = bus_stop["Description"]
-            road_name = bus_stop["RoadName"]
             self.bscode_to_desc_map[bus_stop_code] = desc
             self.bsdesc_to_code_map[desc] = bus_stop_code
-            vector_store_documents.append(Document(id=i, page_content=desc, metadata={"bus_stop_code": bus_stop_code, "road_name": road_name}))
 
-        # vector store
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        self.busstop_vector_store = InMemoryVectorStore(embeddings)
-        self.busstop_vector_store.add_documents(vector_store_documents) # TODO: allow all bus stops to be embedded in vectorstore, not just 10.
+        # Connect to persistent ChromaDB (pre-populated by generate_embeddings.py)
+        chroma_host = os.getenv("CHROMA_HOST", "localhost")
+        chroma_port = int(os.getenv("CHROMA_PORT", "8000"))
+        chroma_client = chromadb.HttpClient(host=chroma_host, port=chroma_port)
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+        self.busstop_vector_store = Chroma(
+            client=chroma_client,
+            collection_name="bus_stops",
+            embedding_function=embeddings,
+        )
+        print(f"Connected to ChromaDB at {chroma_host}:{chroma_port}", flush=True)
 
 
 

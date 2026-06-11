@@ -4,3 +4,4 @@
 useful_cmds.sh
 *.pkg
 *__pycache__*
+chroma_data/

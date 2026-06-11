@@ -27,7 +27,8 @@ class AiAgent:
     def __init__(self, bus_utils: BusUtils):
         if bus_utils is None: raise Exception("bus_utils None in constructor")
         # self.search = TavilySearch(max_results=2)
-        self.model = init_chat_model("gemini-2.0-flash", model_provider="google_genai")
+        model_name = os.getenv("GOOGLE_CHAT_MODEL", "gemini-2.5-flash")
+        self.model = init_chat_model(model_name, model_provider="google_genai")
         self.bus_utils = bus_utils
         self.init_agent_executor()
 
